@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 planner-api = { path = "api" }
+
+[workspace]
+members = ["api", "service", "migration", "entity"]
