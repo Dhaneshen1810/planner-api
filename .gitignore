@@ -1,0 +1,35 @@
+# Rust
+/target/
+**/*.rs.bk
+*.rlib
+Cargo.lock
+
+# Build artifacts
+*.exe
+*.out
+*.app
+*.dylib
+*.so
+/.package-cache/
+
+# Environment files
+.env
+pgdata/
+
+# Docker files
+docker-compose.override.yml
+
+# Logs
+*.log
+
+# IDEs and editors
+.vscode/
+.idea/
+*.iml
+*.swp
+*~
+
+# Debugging
+*.lldb
+*.dSYM/
+*.stackdump
