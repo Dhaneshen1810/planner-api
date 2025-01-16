@@ -7,7 +7,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
     #[serde(skip_deserializing)]
     pub id: i32,
-    pub name: String,
+    pub title: String,
     pub date: Date,
     #[sea_orm(default_value = "NONE")]
     pub recurring_option: Option<RecurringOption>,

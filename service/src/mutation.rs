@@ -7,7 +7,7 @@ pub struct Mutation;
 impl Mutation {
     pub async fn add_task(db: &DbConn, new_task: task::Model) -> Result<task::Model, DbErr> {
         let result = task::ActiveModel {
-            name: Set(new_task.name.to_owned()),
+            title: Set(new_task.title.to_owned()),
             date: Set(new_task.date),
             recurring_option: Set(new_task.recurring_option.clone()),
             is_completed: Set(false),
@@ -22,7 +22,7 @@ impl Mutation {
     pub async fn update_task_by_id(
         db: &DbConn,
         id: i32,
-        name: String,
+        title: String,
         date: Date,
         recurring_option: Option<task::RecurringOption>,
         is_completed: bool,
@@ -35,7 +35,7 @@ impl Mutation {
 
         task::ActiveModel {
             id: task.id,
-            name: Set(name),
+            title: Set(title),
             date: Set(date),
             recurring_option: Set(recurring_option),
             is_completed: Set(is_completed),

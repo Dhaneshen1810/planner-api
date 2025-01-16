@@ -36,7 +36,7 @@ struct FlashData {
 
 #[derive(Deserialize)]
 pub struct UpdateTaskRequest {
-    pub name: String,
+    pub title: String,
     pub date: Date,
     pub recurring_option: Option<task::RecurringOption>,
     pub is_completed: bool,
@@ -101,7 +101,7 @@ async fn update_task(
     let result = Mutation::update_task_by_id(
         conn,
         id,
-        update_data.name,
+        update_data.title,
         update_data.date,
         update_data.recurring_option,
         update_data.is_completed,

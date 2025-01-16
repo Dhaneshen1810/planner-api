@@ -8,3 +8,7 @@ planner-api = { path = "api" }
 
 [workspace]
 members = ["api", "service", "migration", "entity"]
+
+[workspace.dependencies]
+tokio = { version = "1.20", features = ["rt", "macros", "time"] }
+tokio-macros = "2.5"
