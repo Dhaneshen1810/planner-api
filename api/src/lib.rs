@@ -1,5 +1,7 @@
 use actix_example_service::{
     sea_orm::{Database, DatabaseConnection},
+    types::UpdateTaskByIdRequest,
+    types::UpdateTaskRequest,
     Mutation, Query,
 };
 // use actix_files::Files as Fs;
@@ -22,24 +24,25 @@ struct AppState {
     conn: DatabaseConnection,
 }
 
-// #[derive(Debug, Deserialize)]
-// pub struct Params {
-//     page: Option<u64>,
-//     posts_per_page: Option<u64>,
-// }
-
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct FlashData {
     kind: String,
     message: String,
 }
 
+// #[derive(Deserialize)]
+// pub struct UpdateTaskRequest {
+//     pub id: i32,
+//     pub title: String,
+//     pub date: Date,
+//     pub recurring_option: Option<task::RecurringOption>,
+//     pub is_completed: bool,
+//     pub position: i32,
+// }
+
 #[derive(Deserialize)]
-pub struct UpdateTaskRequest {
-    pub title: String,
-    pub date: Date,
-    pub recurring_option: Option<task::RecurringOption>,
-    pub is_completed: bool,
+pub struct BulkUpdateTaskRequest {
+    pub tasks: Vec<UpdateTaskRequest>, // A list of tasks to update
 }
 
 #[get("/tasks")]
@@ -92,7 +95,7 @@ async fn create_task(
 async fn update_task(
     data: web::Data<AppState>,
     id: web::Path<i32>,
-    json: web::Json<UpdateTaskRequest>,
+    json: web::Json<UpdateTaskByIdRequest>,
 ) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
     let id = id.into_inner();
@@ -105,12 +108,35 @@ async fn update_task(
         update_data.date,
         update_data.recurring_option,
         update_data.is_completed,
+        update_data.position,
     )
     .await;
 
     match result {
         Ok(updated_post) => Ok(HttpResponse::Ok().json(updated_post)),
         Err(err) => Err(error::ErrorInternalServerError("Failed to update post")),
+    }
+}
+
+#[put("/tasks")]
+async fn update_tasks(
+    data: web::Data<AppState>,
+    json: web::Json<Vec<UpdateTaskRequest>>, // Expect a Vec of UpdateTaskRequest
+) -> Result<HttpResponse, Error> {
+    let conn = &data.conn;
+    let updates = json.into_inner();
+
+    let result = Mutation::update_tasks_bulk(conn, updates).await;
+
+    match result {
+        Ok(_) => Ok(HttpResponse::Ok().json(json!({
+            "success": true,
+            "message": "Tasks updated successfully"
+        }))),
+        Err(err) => {
+            println!("Error updating tasks in bulk: {:?}", err);
+            Err(error::ErrorInternalServerError("Failed to update tasks"))
+        }
     }
 }
 
@@ -189,6 +215,7 @@ fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(get_task_by_id);
     cfg.service(create_task);
     cfg.service(update_task);
+    cfg.service(update_tasks);
     cfg.service(delete_task);
 }
 

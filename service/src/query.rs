@@ -5,7 +5,7 @@ pub struct Query;
 
 impl Query {
     pub async fn find_all_tasks(conn: &DbConn) -> Result<Vec<task::Model>, DbErr> {
-        Task::find().all(conn).await
+        Task::find().order_by_asc(task::Column::Id).all(conn).await
     }
 
     pub async fn find_task_by_id(db: &DbConn, id: i32) -> Result<Option<task::Model>, DbErr> {

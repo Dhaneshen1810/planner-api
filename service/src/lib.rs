@@ -5,3 +5,5 @@ pub use mutation::*;
 pub use query::*;
 
 pub use sea_orm;
+
+pub mod types;

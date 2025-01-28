@@ -12,6 +12,7 @@ pub struct Model {
     #[sea_orm(default_value = "NONE")]
     pub recurring_option: Option<RecurringOption>,
     pub is_completed: bool,
+    pub position: i32, // New field for position
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
