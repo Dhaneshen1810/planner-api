@@ -1,1 +1,1 @@
-web: ./target/release/planner-api
+web: ./target/release/api
