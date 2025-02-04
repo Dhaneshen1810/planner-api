@@ -25,7 +25,7 @@ impl Mutation {
         id: i32,
         title: String,
         date: Date,
-        recurring_option: Option<task::RecurringOption>,
+        recurring_option: Vec<task::RecurringOption>,
         is_completed: bool,
         position: i32,
     ) -> Result<task::Model, DbErr> {

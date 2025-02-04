@@ -7,7 +7,7 @@ pub struct UpdateTaskRequest {
     pub id: i32,
     pub title: String,
     pub date: Date,
-    pub recurring_option: Option<RecurringOption>,
+    pub recurring_option: Vec<RecurringOption>,
     pub is_completed: bool,
     pub position: i32,
 }
@@ -16,7 +16,7 @@ pub struct UpdateTaskRequest {
 pub struct UpdateTaskByIdRequest {
     pub title: String,
     pub date: Date,
-    pub recurring_option: Option<RecurringOption>,
+    pub recurring_option: Vec<RecurringOption>,
     pub is_completed: bool,
     pub position: i32,
 }

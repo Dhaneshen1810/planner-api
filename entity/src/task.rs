@@ -9,10 +9,10 @@ pub struct Model {
     pub id: i32,
     pub title: String,
     pub date: Date,
-    #[sea_orm(default_value = "NONE")]
-    pub recurring_option: Option<RecurringOption>,
+    #[serde(default)]
+    pub recurring_option: Vec<RecurringOption>,
     pub is_completed: bool,
-    pub position: i32, // New field for position
+    pub position: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -35,8 +35,6 @@ pub enum RecurringOption {
     Saturday,
     #[sea_orm(string_value = "SUNDAY")]
     Sunday,
-    #[sea_orm(string_value = "NONE")]
-    None,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
