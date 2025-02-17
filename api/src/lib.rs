@@ -10,12 +10,13 @@ use actix_web::{
     HttpServer, Result,
 };
 
+use chrono::{Datelike, NaiveDate};
 use entity::task;
 use listenfd::ListenFd;
 use migration::{sea_orm::prelude::Date, Migrator, MigratorTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::env;
+use std::{collections::HashMap, env};
 
 // const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 
@@ -46,12 +47,28 @@ pub struct BulkUpdateTaskRequest {
 }
 
 #[get("/tasks")]
-async fn all(req: HttpRequest, data: web::Data<AppState>) -> Result<HttpResponse, Error> {
+async fn all(
+    req: HttpRequest,
+    data: web::Data<AppState>,
+    query: web::Query<HashMap<String, String>>, // Accept query parameters
+) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
 
-    let tasks = Query::find_all_tasks(conn)
-        .await
-        .map_err(|_| error::ErrorInternalServerError("Failed to fetch posts"))?;
+    // Check if the "date" parameter is provided
+    let tasks = if let Some(date_str) = query.get("date") {
+        match NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
+            Ok(date) => Query::find_tasks_by_date(conn, date).await, // Fetch tasks by date
+            Err(_) => {
+                return Err(error::ErrorBadRequest(
+                    "Invalid date format. Use YYYY-MM-DD",
+                ))
+            }
+        }
+    } else {
+        Query::find_all_tasks(conn).await // Fetch all tasks if no date is provided
+    };
+
+    let tasks = tasks.map_err(|_| error::ErrorInternalServerError("Failed to fetch posts"))?;
 
     Ok(HttpResponse::Ok().json(tasks))
 }
@@ -106,6 +123,7 @@ async fn update_task(
         id,
         update_data.title,
         update_data.date,
+        update_data.time,
         update_data.recurring_option,
         update_data.is_completed,
         update_data.position,

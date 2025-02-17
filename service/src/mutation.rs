@@ -10,6 +10,7 @@ impl Mutation {
         let result = task::ActiveModel {
             title: Set(new_task.title.to_owned()),
             date: Set(new_task.date),
+            time: Set(new_task.time),
             recurring_option: Set(new_task.recurring_option.clone()),
             is_completed: Set(false),
             ..Default::default()
@@ -24,7 +25,8 @@ impl Mutation {
         db: &DbConn,
         id: i32,
         title: String,
-        date: Date,
+        date: Option<Date>,
+        time: Option<String>,
         recurring_option: Vec<task::RecurringOption>,
         is_completed: bool,
         position: i32,
@@ -39,6 +41,7 @@ impl Mutation {
             id: task.id,
             title: Set(title),
             date: Set(date),
+            time: Set(time),
             recurring_option: Set(recurring_option),
             is_completed: Set(is_completed),
             position: Set(position),
@@ -63,6 +66,7 @@ impl Mutation {
             let mut active_task: task::ActiveModel = task.into();
             active_task.title = Set(update.title);
             active_task.date = Set(update.date);
+            active_task.time = Set(update.time);
             active_task.recurring_option = Set(update.recurring_option);
             active_task.is_completed = Set(update.is_completed);
             active_task.position = Set(update.position);

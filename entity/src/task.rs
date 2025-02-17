@@ -8,7 +8,8 @@ pub struct Model {
     #[serde(skip_deserializing)]
     pub id: i32,
     pub title: String,
-    pub date: Date,
+    pub date: Option<Date>,
+    pub time: Option<String>,
     #[serde(default)]
     pub recurring_option: Vec<RecurringOption>,
     pub is_completed: bool,

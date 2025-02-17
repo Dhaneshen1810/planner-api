@@ -1,4 +1,5 @@
 use ::entity::{task, task::Entity as Task};
+use chrono::{Datelike, NaiveDate, Weekday};
 use sea_orm::*;
 
 pub struct Query;
@@ -6,6 +7,32 @@ pub struct Query;
 impl Query {
     pub async fn find_all_tasks(conn: &DbConn) -> Result<Vec<task::Model>, DbErr> {
         Task::find().order_by_asc(task::Column::Id).all(conn).await
+    }
+
+    pub async fn find_tasks_by_date(
+        conn: &DbConn,
+        date: NaiveDate,
+    ) -> Result<Vec<task::Model>, DbErr> {
+        let weekday = match date.weekday() {
+            Weekday::Mon => "MONDAY",
+            Weekday::Tue => "TUESDAY",
+            Weekday::Wed => "WEDNESDAY",
+            Weekday::Thu => "THURSDAY",
+            Weekday::Fri => "FRIDAY",
+            Weekday::Sat => "SATURDAY",
+            Weekday::Sun => "SUNDAY",
+        };
+        println!("🔍 Calculated weekday: {}", weekday); // Debugging log
+
+        let query = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            r#"SELECT * FROM tasks WHERE $1 = ANY(recurring_option)"#,
+            [weekday.into()],
+        );
+
+        let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
+
+        Ok(tasks)
     }
 
     pub async fn find_task_by_id(db: &DbConn, id: i32) -> Result<Option<task::Model>, DbErr> {
