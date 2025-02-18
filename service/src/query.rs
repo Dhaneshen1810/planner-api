@@ -22,12 +22,14 @@ impl Query {
             Weekday::Sat => "SATURDAY",
             Weekday::Sun => "SUNDAY",
         };
-        println!("🔍 Calculated weekday: {}", weekday); // Debugging log
 
         let query = Statement::from_sql_and_values(
             DbBackend::Postgres,
-            r#"SELECT * FROM tasks WHERE $1 = ANY(recurring_option)"#,
-            [weekday.into()],
+            r#"
+            SELECT * FROM tasks 
+            WHERE date = $1 OR $2 = ANY(recurring_option)
+            "#,
+            [date.into(), weekday.into()],
         );
 
         let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
