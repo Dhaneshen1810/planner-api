@@ -23,6 +23,9 @@ impl Query {
             Weekday::Sun => "SUNDAY",
         };
 
+        println!("Fetching tasks for date: {}", date);
+        println!("Corresponding weekday: {}", weekday);
+
         let query = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
