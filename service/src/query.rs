@@ -34,13 +34,14 @@ impl Query {
         //     "#,
         //     [date.into(), weekday.into()],
         // );
+        let date_string = date.to_string();
         let query = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
             SELECT * FROM tasks 
             WHERE (date IS NULL OR date = $1) OR $2 = ANY(recurring_option)
             "#,
-            [Value::from(date), Value::from(weekday)],
+            [Value::from(date_string), Value::from(weekday)],
         );
 
         let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
