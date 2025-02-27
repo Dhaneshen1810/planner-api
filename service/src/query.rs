@@ -38,7 +38,7 @@ impl Query {
             DbBackend::Postgres,
             r#"
             SELECT * FROM tasks 
-            WHERE date = $1 OR $2::TEXT = ANY(recurring_option)
+            WHERE (date IS NULL OR date = $1) OR $2 = ANY(recurring_option)
             "#,
             [Value::from(date), Value::from(weekday)],
         );
