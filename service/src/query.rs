@@ -44,7 +44,7 @@ impl Query {
         );
 
         let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
-
+        println!("Tasks fetched: {:?}", tasks);
         Ok(tasks)
     }
 
