@@ -38,9 +38,9 @@ impl Query {
             DbBackend::Postgres,
             r#"
             SELECT * FROM tasks 
-            WHERE (date IS NULL OR date = $1) OR $2 = ANY(recurring_option)
+            WHERE (date IS NULL OR date = '2025-02-27') OR 'THURSDAY' = ANY(recurring_option)
             "#,
-            [Value::from("2025-02-27"), Value::from("THURSDAY")],
+            vec![],
         );
 
         let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
