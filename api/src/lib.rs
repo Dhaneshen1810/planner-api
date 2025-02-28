@@ -10,13 +10,15 @@ use actix_web::{
     HttpServer, Result,
 };
 
+use chrono::Local;
 use chrono::{Datelike, NaiveDate};
+use cron::Schedule;
 use entity::task;
 use listenfd::ListenFd;
 use migration::{sea_orm::prelude::Date, Migrator, MigratorTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{collections::HashMap, env};
+use std::{collections::HashMap, env, str::FromStr, thread, time::Duration};
 
 // const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 
@@ -185,6 +187,44 @@ async fn delete_task(data: web::Data<AppState>, id: web::Path<i32>) -> Result<Ht
 //     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 // }
 
+// The function that will run at 00:01 AM daily
+async fn scheduled_task(conn: DatabaseConnection) {
+    println!("Running scheduled task at {}", Local::now());
+
+    // Example: Fetch all tasks and process them (Modify this to fit your use case)
+    let tasks = Query::find_all_tasks(&conn).await;
+    match tasks {
+        Ok(task_list) => {
+            for task in task_list {
+                println!("Processing task: {:?}", task);
+            }
+        }
+        Err(err) => {
+            eprintln!("Failed to fetch tasks: {:?}", err);
+        }
+    }
+}
+
+async fn start_scheduler(conn: DatabaseConnection) {
+    use std::str::FromStr; // Ensure this is imported
+
+    let schedule = Schedule::from_str("1 0 * * * *").unwrap(); // Runs at 00:01 AM
+    let mut iterator = schedule.upcoming(Local);
+
+    while let Some(next_run) = iterator.next() {
+        let now = Local::now();
+        let wait_time = (next_run - now).to_std().unwrap_or(Duration::from_secs(0));
+
+        println!("Next scheduled run at: {}", next_run);
+        tokio::time::sleep(wait_time).await; // Use async sleep
+
+        let conn_clone = conn.clone();
+        tokio::spawn(async move {
+            scheduled_task(conn_clone).await;
+        });
+    }
+}
+
 #[actix_web::main]
 async fn start() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
@@ -201,6 +241,13 @@ async fn start() -> std::io::Result<()> {
     // -> create post table if not exists
     let conn = Database::connect(&db_url).await.unwrap();
     Migrator::up(&conn, None).await.unwrap();
+
+    let conn_clone = conn.clone();
+
+    // Start the scheduler in the background
+    tokio::spawn(async move {
+        start_scheduler(conn_clone).await;
+    });
 
     // load tera templates and build app state
     // let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
