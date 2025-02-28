@@ -40,7 +40,7 @@ impl Query {
             SELECT id, title, date, time, recurring_option, is_completed, position
             FROM tasks 
             WHERE (date IS NULL OR date = $1::date)
-              OR $2::text = ANY(recurring_option)
+              OR $2::recurring_option = ANY(recurring_option)
             "#,
             vec![date.into(), weekday.into()],
         );
