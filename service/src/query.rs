@@ -37,7 +37,8 @@ impl Query {
         let query = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
-            SELECT * FROM tasks 
+            SELECT id, title, date, time, recurring_option, is_completed, position
+            FROM tasks 
             WHERE (date IS NULL OR date = '2025-02-27') OR 'THURSDAY' = ANY(recurring_option)
             "#,
             vec![],
