@@ -37,10 +37,10 @@ impl Query {
         let query = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
-            SELECT id, title, date, time, array_to_json(recurring_option::text[]) as recurring_option, is_completed, position
+            SELECT id, title, date, time, recurring_option, is_completed, position
             FROM tasks 
             WHERE (date IS NULL OR date = $1::date)
-              OR $2::text = ANY(recurring_option::text[])
+              OR $2::text = ANY(recurring_option)
             "#,
             vec![date.into(), weekday.into()],
         );
