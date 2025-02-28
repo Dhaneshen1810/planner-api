@@ -44,8 +44,22 @@ impl Query {
             vec![date.into(), weekday.into()],
         );
 
-        let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
-        println!("Tasks fetched: {:?}", tasks);
+        // let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
+        let tasks_result = Task::find().from_raw_sql(query).all(conn).await;
+
+        match tasks_result {
+            Ok(tasks) => {
+                println!("Tasks fetched successfully: {:?}", tasks);
+                Ok(tasks)
+            }
+            Err(err) => {
+                println!(
+                    "Error fetching tasks for date {} (weekday {}): {:?}",
+                    date, weekday, err
+                );
+                Err(err)
+            }
+        }
         Ok(tasks)
     }
 
