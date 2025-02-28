@@ -60,7 +60,7 @@ impl Query {
                 Err(err)
             }
         }
-        Ok(tasks)
+        // Ok(tasks)
     }
 
     pub async fn find_task_by_id(db: &DbConn, id: i32) -> Result<Option<task::Model>, DbErr> {
