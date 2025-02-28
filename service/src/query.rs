@@ -37,7 +37,7 @@ impl Query {
         let query = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
-            SELECT id, title, date, time, recurring_option, is_completed, position
+            SELECT id, title, date, time, array_to_json(recurring_option::text[]) as recurring_option, is_completed, position
             FROM tasks 
             WHERE (date IS NULL OR date = $1::date)
               OR $2::text = ANY(recurring_option::text[])
@@ -45,23 +45,9 @@ impl Query {
             vec![date.into(), weekday.into()],
         );
 
-        // let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
-        let tasks_result = Task::find().from_raw_sql(query).all(conn).await;
-
-        match tasks_result {
-            Ok(tasks) => {
-                println!("Tasks fetched successfully: {:?}", tasks);
-                Ok(tasks)
-            }
-            Err(err) => {
-                println!(
-                    "Error fetching tasks for date {} (weekday {}): {:?}",
-                    date, weekday, err
-                );
-                Err(err)
-            }
-        }
-        // Ok(tasks)
+        let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
+        println!("Tasks fetched: {:?}", tasks);
+        Ok(tasks)
     }
 
     pub async fn find_task_by_id(db: &DbConn, id: i32) -> Result<Option<task::Model>, DbErr> {
