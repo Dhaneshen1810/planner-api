@@ -23,17 +23,6 @@ impl Query {
             Weekday::Sun => "SUNDAY",
         };
 
-        println!("Fetching tasks for date: {}", date);
-        println!("Corresponding weekday: {}", weekday);
-
-        // let query = Statement::from_sql_and_values(
-        //     DbBackend::Postgres,
-        //     r#"
-        //     SELECT * FROM tasks
-        //     WHERE date = $1 OR $2 = ANY(recurring_option)
-        //     "#,
-        //     [date.into(), weekday.into()],
-        // );
         let query = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
@@ -46,7 +35,6 @@ impl Query {
         );
 
         let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
-        println!("Tasks fetched: {:?}", tasks);
         Ok(tasks)
     }
 

@@ -1,8 +1,8 @@
 use crate::types::UpdateTaskRequest;
 use ::entity::{task, task::Entity as Task};
+use chrono::Local;
 use prelude::Date;
-use sea_orm::*;
-
+use sea_orm::{prelude::Expr, *};
 pub struct Mutation;
 
 impl Mutation {
@@ -87,6 +87,46 @@ impl Mutation {
             .map(Into::into)?;
 
         task.delete(db).await
+    }
+
+    pub async fn reset_due_tasks(db: &DbConn) -> Result<u64, DbErr> {
+        let today = Local::now().date_naive(); // Get today's date (YYYY-MM-DD)
+        let weekday = Local::now().format("%A").to_string(); // Get today's weekday as string
+
+        let query = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            r#"
+            SELECT id, title, date, time, recurring_option::text[] as recurring_option, is_completed, position
+            FROM tasks 
+            WHERE (date IS NULL OR date = $1::date)
+              OR $2::text = ANY(recurring_option::text[])
+            "#,
+            vec![today.into(), weekday.into()],
+        );
+
+        let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(db).await?;
+
+        // Fetch task IDs that should be updated
+        let task_ids: Vec<i32> = tasks.iter().map(|task| task.id).collect();
+
+        // TODO complete the rest of the code
+
+        if task_ids.is_empty() {
+            println!("No tasks to update.");
+            return Ok(0);
+        }
+
+        println!("Updating tasks with IDs: {:?}", task_ids);
+
+        // Perform bulk update to set is_completed = false
+        let result = Task::update_many()
+            .col_expr(task::Column::IsCompleted, Expr::value(false))
+            .filter(task::Column::Id.is_in(task_ids))
+            .exec(db)
+            .await?;
+
+        println!("Updated {} tasks due today", result.rows_affected);
+        Ok(result.rows_affected)
     }
 
     // pub async fn delete_all_posts(db: &DbConn) -> Result<DeleteResult, DbErr> {

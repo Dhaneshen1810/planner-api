@@ -160,6 +160,22 @@ async fn update_tasks(
     }
 }
 
+#[put("/reset_tasks_due_today")]
+async fn reset_due_tasks_handler(data: web::Data<AppState>) -> Result<HttpResponse, Error> {
+    let conn = &data.conn;
+
+    match Mutation::reset_due_tasks(conn).await {
+        Ok(rows) => Ok(HttpResponse::Ok().json(json!({
+            "success": true,
+            "message": format!("Updated {} tasks due today", rows)
+        }))),
+        Err(err) => {
+            eprintln!("Error updating tasks: {:?}", err);
+            Err(error::ErrorInternalServerError("Failed to update tasks"))
+        }
+    }
+}
+
 #[delete("/tasks/{id}")]
 async fn delete_task(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
@@ -281,6 +297,7 @@ fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(create_task);
     cfg.service(update_task);
     cfg.service(update_tasks);
+    cfg.service(reset_due_tasks_handler);
     cfg.service(delete_task);
 }
 
