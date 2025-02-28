@@ -39,9 +39,9 @@ impl Query {
             r#"
             SELECT id, title, date, time, recurring_option, is_completed, position
             FROM tasks 
-            WHERE (date IS NULL OR date = '2025-02-27') OR 'THURSDAY' = ANY(recurring_option)
+            WHERE (date IS NULL OR date = $1) OR $2 = ANY(recurring_option)
             "#,
-            vec![],
+            vec![date.into(), weekday.into()],
         );
 
         let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
