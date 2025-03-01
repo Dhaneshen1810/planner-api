@@ -1,6 +1,6 @@
 use crate::types::UpdateTaskRequest;
-use ::entity::{task, task::Entity as Task};
-use chrono::Local;
+use ::entity::task::{self, Entity as Task, Model, RecurringOption};
+use chrono::{Datelike, Local, Weekday};
 use prelude::Date;
 use sea_orm::{prelude::Expr, *};
 pub struct Mutation;
@@ -91,23 +91,48 @@ impl Mutation {
 
     pub async fn reset_due_tasks(db: &DbConn) -> Result<u64, DbErr> {
         let today = Local::now().date_naive(); // Get today's date (YYYY-MM-DD)
-        let weekday = Local::now().format("%A").to_string(); // Get today's weekday as string
+        let weekday = match today.weekday() {
+            Weekday::Mon => "MONDAY",
+            Weekday::Tue => "TUESDAY",
+            Weekday::Wed => "WEDNESDAY",
+            Weekday::Thu => "THURSDAY",
+            Weekday::Fri => "FRIDAY",
+            Weekday::Sat => "SATURDAY",
+            Weekday::Sun => "SUNDAY",
+        };
 
         let query = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
             SELECT id, title, date, time, recurring_option::text[] as recurring_option, is_completed, position
             FROM tasks 
-            WHERE (date IS NULL OR date = $1::date)
-              OR $2::text = ANY(recurring_option::text[])
+            WHERE date = $1::date
+              OR array_length(recurring_option, 1) > 0
             "#,
-            vec![today.into(), weekday.into()],
+            vec![Value::from(today.to_string())], // Only need today's date
         );
 
-        let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(db).await?;
+        let all_recurring_tasks_and_for_due_today: Vec<Model> =
+            task::Entity::find().from_raw_sql(query).all(db).await?;
+
+        let filtered_tasks: Vec<Model> = all_recurring_tasks_and_for_due_today
+            .into_iter()
+            .filter(|task| {
+                task.date == Some(today)
+                    || task.recurring_option.iter().any(|opt| match opt {
+                        RecurringOption::Monday => weekday == "MONDAY",
+                        RecurringOption::Tuesday => weekday == "TUESDAY",
+                        RecurringOption::Wednesday => weekday == "WEDNESDAY",
+                        RecurringOption::Thursday => weekday == "THURSDAY",
+                        RecurringOption::Friday => weekday == "FRIDAY",
+                        RecurringOption::Saturday => weekday == "SATURDAY",
+                        RecurringOption::Sunday => weekday == "SUNDAY",
+                    })
+            })
+            .collect();
 
         // Fetch task IDs that should be updated
-        let task_ids: Vec<i32> = tasks.iter().map(|task| task.id).collect();
+        let task_ids: Vec<i32> = filtered_tasks.iter().map(|task| task.id).collect();
 
         // TODO complete the rest of the code
 
@@ -115,8 +140,6 @@ impl Mutation {
             println!("No tasks to update.");
             return Ok(0);
         }
-
-        println!("Updating tasks with IDs: {:?}", task_ids);
 
         // Perform bulk update to set is_completed = false
         let result = Task::update_many()

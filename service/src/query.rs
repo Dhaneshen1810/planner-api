@@ -1,4 +1,4 @@
-use ::entity::{task, task::Entity as Task};
+use ::entity::task::{self, Entity as Task, Model, RecurringOption};
 use chrono::{Datelike, NaiveDate, Weekday};
 use sea_orm::*;
 
@@ -28,14 +28,32 @@ impl Query {
             r#"
             SELECT id, title, date, time, recurring_option::text[] as recurring_option, is_completed, position
             FROM tasks 
-            WHERE (date IS NULL OR date = $1::date)
-              OR $2::text = ANY(recurring_option::text[])
+            WHERE date = $1::date
+              OR array_length(recurring_option, 1) > 0
             "#,
-            vec![date.into(), weekday.into()],
+            vec![Value::from(date.to_string())], // Only need today's date
         );
 
-        let tasks: Vec<task::Model> = Task::find().from_raw_sql(query).all(conn).await?;
-        Ok(tasks)
+        let all_recurring_tasks_and_for_due_today: Vec<Model> =
+            task::Entity::find().from_raw_sql(query).all(conn).await?;
+
+        let filtered_tasks: Vec<Model> = all_recurring_tasks_and_for_due_today
+            .into_iter()
+            .filter(|task| {
+                task.date == Some(date)
+                    || task.recurring_option.iter().any(|opt| match opt {
+                        RecurringOption::Monday => weekday == "MONDAY",
+                        RecurringOption::Tuesday => weekday == "TUESDAY",
+                        RecurringOption::Wednesday => weekday == "WEDNESDAY",
+                        RecurringOption::Thursday => weekday == "THURSDAY",
+                        RecurringOption::Friday => weekday == "FRIDAY",
+                        RecurringOption::Saturday => weekday == "SATURDAY",
+                        RecurringOption::Sunday => weekday == "SUNDAY",
+                    })
+            })
+            .collect();
+
+        Ok(filtered_tasks)
     }
 
     pub async fn find_task_by_id(db: &DbConn, id: i32) -> Result<Option<task::Model>, DbErr> {
