@@ -222,7 +222,7 @@ async fn start_scheduler(conn: DatabaseConnection) -> Result<(), Box<dyn std::er
 
     sched
         .add(Job::new_async_tz(
-            "0 55 12 * * *",
+            "1 0 0 * * *",
             Mountain,
             move |uuid, mut l| {
                 let conn_clone = conn.clone();
