@@ -205,21 +205,27 @@ async fn delete_task(data: web::Data<AppState>, id: web::Path<i32>) -> Result<Ht
 //     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 // }
 
-async fn scheduled_task() {
+async fn scheduled_task(conn: DatabaseConnection) {
     println!("Running scheduled task at {}", Local::now());
 
-    // Your task logic here (e.g., fetch and process tasks)
+    // Run the reset_due_tasks mutation.
+    match Mutation::reset_due_tasks(&conn).await {
+        Ok(rows) => println!("Reset tasks successfully: {} tasks updated", rows),
+        Err(e) => eprintln!("Error resetting tasks: {:?}", e),
+    }
+
     println!("Task executed successfully.");
 }
 
-async fn start_scheduler() -> Result<(), Box<dyn std::error::Error>> {
+async fn start_scheduler(conn: DatabaseConnection) -> Result<(), Box<dyn std::error::Error>> {
     let sched = JobScheduler::new().await?;
 
     sched
         .add(Job::new_async_tz(
-            "0 45 12 * * *",
+            "0 55 12 * * *",
             Mountain,
-            |uuid, mut l| {
+            move |uuid, mut l| {
+                let conn_clone = conn.clone();
                 Box::pin(async move {
                     println!("Running scheduled task at {}", chrono::Local::now());
                     // Query and print the next scheduled run time for this job.
@@ -230,7 +236,8 @@ async fn start_scheduler() -> Result<(), Box<dyn std::error::Error>> {
                             println!("Error getting next scheduled run for job {}: {:?}", uuid, e)
                         }
                     }
-                    scheduled_task().await;
+                    // Call the scheduled task that runs the reset_due_tasks mutation.
+                    scheduled_task(conn_clone).await;
                 })
             },
         )?)
@@ -257,8 +264,9 @@ async fn start() -> std::io::Result<()> {
     let conn = Database::connect(&db_url).await.unwrap();
     Migrator::up(&conn, None).await.unwrap();
 
-    tokio::spawn(async {
-        if let Err(e) = start_scheduler().await {
+    let conn_for_scheduler = conn.clone();
+    tokio::spawn(async move {
+        if let Err(e) = start_scheduler(conn_for_scheduler).await {
             eprintln!("Scheduler failed: {:?}", e);
         }
     });
