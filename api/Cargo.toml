@@ -21,5 +21,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
 chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10.0"
 cron = "0.15"
 tokio = { version = "1", features = ["full"] }
+tokio-cron-scheduler = "0.13"

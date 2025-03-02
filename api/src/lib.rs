@@ -10,8 +10,9 @@ use actix_web::{
     HttpServer, Result,
 };
 
-use chrono::Local;
 use chrono::{Datelike, NaiveDate};
+use chrono::{Local, Utc};
+use chrono_tz::Canada::Mountain;
 use cron::Schedule;
 use entity::task;
 use listenfd::ListenFd;
@@ -19,6 +20,7 @@ use migration::{sea_orm::prelude::Date, Migrator, MigratorTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{collections::HashMap, env, str::FromStr, thread, time::Duration};
+use tokio_cron_scheduler::{Job, JobScheduler};
 
 // const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 
@@ -203,42 +205,39 @@ async fn delete_task(data: web::Data<AppState>, id: web::Path<i32>) -> Result<Ht
 //     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 // }
 
-// The function that will run at 00:01 AM daily
-async fn scheduled_task(conn: DatabaseConnection) {
+async fn scheduled_task() {
     println!("Running scheduled task at {}", Local::now());
 
-    // Example: Fetch all tasks and process them (Modify this to fit your use case)
-    let tasks = Query::find_all_tasks(&conn).await;
-    match tasks {
-        Ok(task_list) => {
-            for task in task_list {
-                println!("Processing task: {:?}", task);
-            }
-        }
-        Err(err) => {
-            eprintln!("Failed to fetch tasks: {:?}", err);
-        }
-    }
+    // Your task logic here (e.g., fetch and process tasks)
+    println!("Task executed successfully.");
 }
 
-async fn start_scheduler(conn: DatabaseConnection) {
-    use std::str::FromStr; // Ensure this is imported
+async fn start_scheduler() -> Result<(), Box<dyn std::error::Error>> {
+    let sched = JobScheduler::new().await?;
 
-    let schedule = Schedule::from_str("1 0 * * * *").unwrap(); // Runs at 00:01 AM
-    let mut iterator = schedule.upcoming(Local);
+    sched
+        .add(Job::new_async_tz(
+            "0 45 12 * * *",
+            Mountain,
+            |uuid, mut l| {
+                Box::pin(async move {
+                    println!("Running scheduled task at {}", chrono::Local::now());
+                    // Query and print the next scheduled run time for this job.
+                    match l.next_tick_for_job(uuid).await {
+                        Ok(Some(ts)) => println!("Next scheduled run for job {}: {:?}", uuid, ts),
+                        Ok(None) => println!("Job {} has no next scheduled run", uuid),
+                        Err(e) => {
+                            println!("Error getting next scheduled run for job {}: {:?}", uuid, e)
+                        }
+                    }
+                    scheduled_task().await;
+                })
+            },
+        )?)
+        .await?;
 
-    while let Some(next_run) = iterator.next() {
-        let now = Local::now();
-        let wait_time = (next_run - now).to_std().unwrap_or(Duration::from_secs(0));
-
-        println!("Next scheduled run at: {}", next_run);
-        tokio::time::sleep(wait_time).await; // Use async sleep
-
-        let conn_clone = conn.clone();
-        tokio::spawn(async move {
-            scheduled_task(conn_clone).await;
-        });
-    }
+    sched.start().await?;
+    Ok(())
 }
 
 #[actix_web::main]
@@ -258,11 +257,10 @@ async fn start() -> std::io::Result<()> {
     let conn = Database::connect(&db_url).await.unwrap();
     Migrator::up(&conn, None).await.unwrap();
 
-    let conn_clone = conn.clone();
-
-    // Start the scheduler in the background
-    tokio::spawn(async move {
-        start_scheduler(conn_clone).await;
+    tokio::spawn(async {
+        if let Err(e) = start_scheduler().await {
+            eprintln!("Scheduler failed: {:?}", e);
+        }
     });
 
     // load tera templates and build app state
